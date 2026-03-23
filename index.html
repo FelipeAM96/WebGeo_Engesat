@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>WebGeo - Engesat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- Leaflet.pm -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.pm/dist/leaflet.pm.css" />
+  <!-- Leaflet Control Geocoder CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+
+  <style>
+    /* Reset e base */
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    /* Toolbar Superior Central (Desktop) */
+    #top-toolbar {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 2000;
+      transition: all 0.3s ease;
+    }
+
+    .btn-main {
+      background: white;
+      color: #333;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-weight: 600;
+      font-size: 0.9em;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-main:hover {
+      background: #f0f0f0;
+      transform: translateY(-2px);
+    }
+
+    .btn-main.image { border-left: 4px solid #007bff; }
+    .btn-main.polygon { border-left: 4px solid #28a745; }
+
+    /* Esconder inputs de arquivo */
+    .file-input { display: none; }
+
+    /* Painel de polígonos */
+    #info-panel {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      z-index: 1000;
+      width: 280px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    #info-panel strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 5px;
+    }
+
+    #polygon-list {
+      list-style: none;      padding: 0;
+      margin: 0;
+    }
+
+    #polygon-list li {
+      margin-bottom: 8px;
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #e9ecef;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .poly-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .poly-checkbox {
+      margin-top: 4px;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .poly-info {
+      font-size: 0.85em;
+      flex-grow: 1;
+      color: #555;
+      line-height: 1.2;
+    }
+
+    .poly-actions {
+      display: flex;
+      gap: 4px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .btn-small {
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 6px;
+      cursor: pointer;
+      font-size: 0.7em;
+      transition: background 0.2s;
+    }
+
+    .btn-small.focus { background: #007bff; }
+    .btn-small.export-kml { background: #6c757d; }
+    .btn-small.export-kmz { background: #17a2b8; }
+    .btn-small.remove { background: #dc3545; }
+
+    .btn-small:hover { opacity: 0.9; }
+
+    /* Seletor de camadas base */
+    #basemap-selector {
+      position: absolute;
+      top: 10px;
+      left: 60px;
+      display: flex;
+      gap: 8px;
+      z-index: 1300;
+    }
+
+    .basemap-thumb {
+      width: 45px;
+      height: 45px;
+      background-size: cover;
+      background-position: center;
+      border-radius: 6px;
+      border: 2px solid white;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    .basemap-thumb.selected {
+      border-color: #007bff;
+    }
+
+    /* Estilização da busca por endereço */
+    .leaflet-control-geocoder {
+      background: white;
+      border-radius: 8px !important;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15) !important;
+      border: none !important;
+      margin-left: 10px !important;
+    }
+
+    /* --- Logos e Links Inferiores --- */
+    #logo-link {
+      position: absolute;
+      bottom: 30px;
+      left: 20px;
+      z-index: 1300;
+    }
+
+    #logo {
+      height: 50px;
+      cursor: pointer;
+      user-select: none;
+      pointer-events: auto;
+    }
+
+    #whatsapp-link {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      z-index: 1300;
+    }
+
+    #whatsapp-link img {
+      height: 90px;
+      width: auto;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #tutorial-link {
+      position: absolute;
+      bottom: 20px;
+      left: 51%;
+      transform: translateX(-50%);
+      z-index: 1300;
+    }
+
+    #tutorial-link img {
+      height: 65px;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 10px;
+    }
+
+    /* Loading Overlay */
+    #loader {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(255,255,255,0.7);
+      z-index: 3000;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    @keyframes spin { 
+      0% { transform: rotate(0deg); } 
+      100% { transform: rotate(360deg); } 
+    }
+
+    /* Ajustes para Celular */
+    @media (max-width: 600px) {
+      /* Toolbar vira uma barra lateral embaixo das ferramentas */
+      #top-toolbar {
+        top: 480px; 
+        left: 10px;
+        transform: none;
+        flex-direction: column;
+        gap: 5px;
+      }
+      
+      .btn-main {
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border-radius: 4px;
+        justify-content: center;
+        box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+      }
+
+      .btn-main span.btn-text {
+        display: none;
+      }
+      
+      .btn-main span.btn-icon {
+        margin: 0;
+        font-size: 1.2em;
+      }
+
+      #info-panel { width: 180px; font-size: 12px; }
+
+      /* Ajustes de escala para celular */
+      #logo { height: 35px; }
+      #whatsapp-link img { height: 60px; }
+      #tutorial-link img { height: 45px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="loader">
+    <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite;"></div>
+    <p style="margin-top: 10px; font-weight: bold;">Processando arquivo...</p>
+  </div>
+
+  <div id="map"></div>
+
+  <!-- Toolbar de Carregamento -->
+  <div id="top-toolbar">
+    <button class="btn-main image" onclick="document.getElementById('input-image').click()" title="Carregar Imagem">
+      <span class="btn-icon">🖼️</span> <span class="btn-text">Carregar Imagem</span>
+    </button>
+    <button class="btn-main polygon" onclick="document.getElementById('input-poly').click()" title="Carregar Polígono">
+      <span class="btn-icon">⬢</span> <span class="btn-text">Carregar Polígono</span>
+    </button>
+  </div>
+
+  <input type="file" id="input-image" class="file-input" accept=".tif,.tiff,.kmz,.kml" />
+  <input type="file" id="input-poly" class="file-input" accept=".kmz,.kml,.zip,.geojson,.json" />
+
+  <!-- Seletor de camadas base -->
+  <div id="basemap-selector">
+    <div class="basemap-thumb selected" data-map="satellite" title="Satélite" style="background-image: url('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/1/0/0');"></div>
+    <div class="basemap-thumb" data-map="streets" title="Mapa" style="background-image: url('https://a.tile.openstreetmap.org/1/0/0.png');"></div>
+  </div>
+
+  <div id="info-panel">
+    <strong>Camadas e Polígonos</strong>
+    <ul id="polygon-list"></ul>
+  </div>
+
+  <!-- Logos e Links -->
+  <a href="http://www.engesat.com.br/" target="_blank" id="logo-link">
+    <img src="img/Logo Engesat.png" alt="Logo Engesat" id="logo" onerror="this.src='https://via.placeholder.com/150x50?text=Engesat'"/>
+  </a>
+
+  <a href="https://www.youtube.com/watch?v=wEDYJikLmqc" target="_blank" id="tutorial-link" title="Tutorial de Uso">
+    <img src="img/Tutorial-Uso.png" alt="Tutorial" onerror="this.src='https://via.placeholder.com/150x65?text=Tutorial+Video'" />
+  </a>
+
+  <a href="https://api.whatsapp.com/send?phone=554191340990" target="_blank" id="whatsapp-link" title="WhatsApp">
+    <img src="img/Whatsapp_logo.png" alt="WhatsApp" onerror="this.src='https://cdn-icons-png.flaticon.com/512/124/124034.png'" />
+  </a>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.pm/dist/leaflet.pm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <script src="https://unpkg.com/tokml@0.4.0/tokml.js"></script>
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  
+  <!-- Bibliotecas para Carregamento de Arquivos -->
+  <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://unpkg.com/@tmcw/togeojson@5.0.0/dist/togeojson.umd.js"></script>
+  <script src="https://unpkg.com/georaster/dist/georaster.browser.bundle.min.js"></script>
+  <script src="https://unpkg.com/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+
+  <script>
+    // Camadas base
+    const satelite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { 
+      attribution: "Esri",
+      zIndex: 0 
+    });
+    
+    const mapa = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { 
+      attribution: "OSM",
+      zIndex: 0 
+    });
+
+    // Coordenadas iniciais
+    const initialView = { center: [-15.235, -54.9253], zoom: 4 };
+
+    const map = L.map("map", { 
+      center: initialView.center, 
+      zoom: initialView.zoom, 
+      layers: [satelite], 
+      zoomControl: false 
+    });
+
+    // Zoom no topo esquerdo
+    L.control.zoom({ position: 'topleft' }).addTo(map);
+
+    let currentBase = satelite;
+    const drawnItems = new L.FeatureGroup().addTo(map);
+    const uploadedRasters = new L.FeatureGroup().addTo(map);
+
+    // --- Estilo Azul com 90% de Transparência ---
+    const polyStyle = {
+      fillColor: '#3388ff',
+      fillOpacity: 0.1, 
+      opacity: 1,      
+      color: '#3388ff',
+      weight: 3
+    };
+
+    function showLoader(show) { document.getElementById('loader').style.display = show ? 'flex' : 'none'; }
+
+    // --- Botão Home (Focalizar Vista Inicial) ---
+    const HomeControl = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd: function () {
+        const container = L.DomUtil.create("div", "leaflet-bar leaflet-control");
+        const button = L.DomUtil.create("a", "", container);
+        button.innerHTML = "🏠";
+        button.style.fontSize = "18px";
+        button.style.lineHeight = "30px";
+        button.style.cursor = "pointer";
+        button.style.backgroundColor = "white";
+        button.title = "Voltar ao Início";
+
+        button.onclick = function() {
+          map.setView(initialView.center, initialView.zoom);
+        };
+
+        return container;
+      },
+    });
+    map.addControl(new HomeControl());
+
+    // --- Geocoder (Busca por Endereço) ---
+    const geocoder = L.Control.geocoder({ 
+      defaultMarkGeocode: false, 
+      position: "topleft",
+      placeholder: "Digite o endereço...",
+      errorMessage: "Local não encontrado."
+    }).addTo(map);
+
+    geocoder.on("markgeocode", e => {
+      const bbox = e.geocode.bbox;
+      if (bbox) map.fitBounds(bbox);
+      else map.setView(e.geocode.center, 15);
+    });
+
+    // Função para alternar visibilidade
+    window.toggleLayerVisibility = (id, type, isVisible) => {
+      const group = type === 'vector' ? drawnItems : uploadedRasters;
+      const layer = group.getLayer(id);
+      if (!layer) return;
+
+      if (isVisible) {
+        if (type === 'vector') {
+          layer.setStyle({ opacity: 1, fillOpacity: 0.1, interactive: true });
+        } else {
+          // Se for um grupo de imagens (KMZ mosaico), percorre os filhos
+          if (layer.eachLayer) {
+             layer.eachLayer(child => child.setOpacity(1.0));
+             layer.options.opacity = 1.0;
+          } else {
+             layer.setOpacity(1.0);
+          }
+        }
+      } else {
+        if (type === 'vector') {
+          layer.setStyle({ opacity: 0, fillOpacity: 0, interactive: false });
+        } else {
+          if (layer.eachLayer) {
+             layer.eachLayer(child => child.setOpacity(0));
+             layer.options.opacity = 0;
+          } else {
+             layer.setOpacity(0);
+          }
+        }
+      }
+    };
+
+    function updateList() {
+      const list = document.getElementById("polygon-list");
+      list.innerHTML = "";
+      
+      drawnItems.eachLayer((layer) => {
+        const name = layer.feature?.properties?.name || "Objeto Importado";
+        addLayerToList(name, layer, 'vector');
+      });
+
+      uploadedRasters.eachLayer((layer) => {
+        const name = layer.options?.name || "Raster Importado";
+        addLayerToList(name, layer, 'raster');
+      });
+    }
+
+    function addLayerToList(name, layer, type) {
+      const list = document.getElementById("polygon-list");
+      const li = document.createElement("li");
+      
+      let areaInfo = "";
+      if (type === 'vector') {
+        let area;
+        if (layer instanceof L.Circle) {
+          const radius = layer.getRadius();
+          area = Math.PI * Math.pow(radius, 2);
+        } else if (typeof layer.toGeoJSON === 'function') {
+          area = turf.area(layer.toGeoJSON());
+        }
+        
+        if (area !== undefined) {
+          areaInfo = area >= 1000000 ? (area/1000000).toFixed(2) + " km²" : area.toFixed(2) + " m²";
+        }
+      }
+
+      const isVisible = layer.options.opacity !== 0;
+
+      li.innerHTML = `
+        <div class="poly-header">
+          <input type="checkbox" class="poly-checkbox" ${isVisible ? 'checked' : ''} 
+                 onchange="toggleLayerVisibility('${layer._leaflet_id}', '${type}', this.checked)">
+          <span class="poly-info"><strong>${name}</strong>${areaInfo ? '<br>Área: ' + areaInfo : ''}</span>
+        </div>
+        <div class="poly-actions">
+          <button class="btn-small focus" onclick="focusLayer('${layer._leaflet_id}', '${type}')">Focar</button>
+          ${type === 'vector' ? `
+            <button class="btn-small export-kml" onclick="exportSingleKML('${layer._leaflet_id}')">KML</button>
+            <button class="btn-small export-kmz" onclick="exportSingleKMZ('${layer._leaflet_id}')">KMZ</button>
+          ` : ''}
+          <button class="btn-small remove" onclick="removeLayer('${layer._leaflet_id}', '${type}')">Remover</button>
+        </div>
+      `;
+      list.appendChild(li);
+    }
+
+    // --- Exportação ---
+    window.exportSingleKML = (id) => {
+      const layer = drawnItems.getLayer(id);
+      if (!layer) return;
+      const geojson = layer.toGeoJSON();
+      const kml = tokml(geojson, { name: "name", description: "name" });
+      const name = layer.feature?.properties?.name || "poligono";
+      
+      const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${name.replace(/\s+/g, '_')}.kml`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    window.exportSingleKMZ = async (id) => {
+      const layer = drawnItems.getLayer(id);
+      if (!layer) return;
+      
+      showLoader(true);
+      try {
+        const geojson = layer.toGeoJSON();
+        const kml = tokml(geojson, { name: "name", description: "name" });
+        const name = layer.feature?.properties?.name || "poligono";
+        
+        const zip = new JSZip();
+        zip.file("doc.kml", kml);
+        
+        const content = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(content);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${name.replace(/\s+/g, '_')}.kmz`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao gerar KMZ.");
+      }
+      showLoader(false);
+    };
+
+    window.focusLayer = (id, type) => {
+      const group = type === 'vector' ? drawnItems : uploadedRasters;
+      const layer = group.getLayer(id);
+      if (layer) {
+        if (layer.getBounds) {
+          map.fitBounds(layer.getBounds());
+        } else if (layer.getLatLng) {
+          map.setView(layer.getLatLng(), 15);
+        }
+      }
+    };
+
+    window.removeLayer = (id, type) => {
+      const group = type === 'vector' ? drawnItems : uploadedRasters;
+      const layer = group.getLayer(id);
+      if (layer) group.removeLayer(layer);
+      updateList();
+    };
+
+    // --- Carregamento de Arquivos ---
+    document.getElementById('input-poly').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      showLoader(true);
+      const reader = new FileReader();
+      const ext = file.name.split('.').pop().toLowerCase();
+
+      reader.onload = async (event) => {
+        try {
+          let geojson;
+          if (ext === 'zip') {
+            geojson = await shp(event.target.result);
+          } else if (ext === 'kml' || ext === 'kmz') {
+            let kmlText;
+            if (ext === 'kmz') {
+              const zip = await JSZip.loadAsync(event.target.result);
+              const kmlFile = Object.keys(zip.files).find(f => f.endsWith('.kml'));
+              kmlText = await zip.file(kmlFile).async("string");
+            } else {
+              kmlText = new TextDecoder().decode(event.target.result);
+            }
+            const parser = new DOMParser();
+            const kmlDom = parser.parseFromString(kmlText, "text/xml");
+            geojson = toGeoJSON.kml(kmlDom);
+          } else {
+            geojson = JSON.parse(new TextDecoder().decode(event.target.result));
+          }
+
+          const layer = L.geoJSON(geojson, {
+            style: polyStyle,
+            onEachFeature: (f, l) => {
+              l.feature = f;
+              if (!f.properties.name) f.properties.name = file.name;
+              if (l.setStyle) l.setStyle(polyStyle);
+              l.on("pm:edit pm:update", updateList);
+            }
+          });
+          
+          layer.eachLayer(l => {
+            l.feature = l.feature || { type: "Feature", properties: { name: file.name } };
+            drawnItems.addLayer(l);
+            l.on("pm:edit pm:update", updateList);
+          });
+          map.fitBounds(layer.getBounds());
+          updateList();
+        } catch (err) {
+          console.error(err);
+          alert("Erro ao processar arquivo.");
+        }
+        showLoader(false);
+        e.target.value = "";
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    document.getElementById('input-image').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      showLoader(true);
+      const ext = file.name.split('.').pop().toLowerCase();
+
+      if (ext === 'tif' || ext === 'tiff') {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          try {
+            const arrayBuffer = event.target.result;
+            const georaster = await parseGeoraster(arrayBuffer);
+            const layer = new GeoRasterLayer({
+              georaster: georaster,
+              opacity: 1.0,
+              resolution: 256,
+              name: file.name,
+              zIndex: 1000
+            });
+            uploadedRasters.addLayer(layer);
+            map.fitBounds(layer.getBounds());
+            updateList();
+          } catch (err) {
+            console.error(err);
+            alert("Erro no GeoTIFF.");
+          }
+          showLoader(false);
+          e.target.value = "";
+        };
+        reader.readAsArrayBuffer(file);
+      } else if (ext === 'kmz' || ext === 'kml') {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          try {
+            let kmlText;
+            let zip = null;
+            if (ext === 'kmz') {
+              zip = await JSZip.loadAsync(event.target.result);
+              const kmlFileName = Object.keys(zip.files).find(f => f.toLowerCase().endsWith('.kml'));
+              kmlText = await zip.file(kmlFileName).async("string");
+            } else {
+              kmlText = new TextDecoder().decode(event.target.result);
+            }
+
+            const parser = new DOMParser();
+            const kmlDom = parser.parseFromString(kmlText, "text/xml");
+            const groundOverlays = kmlDom.getElementsByTagName('GroundOverlay');
+
+            if (groundOverlays.length === 0) {
+              throw new Error("Nenhuma sobreposição de imagem encontrada.");
+            }
+
+            // CRIAR UM GRUPO ÚNICO PARA ESTE ARQUIVO KMZ
+            const kmzGroup = L.layerGroup();
+            kmzGroup.options = { name: file.name, opacity: 1.0 };
+            const allBounds = [];
+
+            for (let overlay of groundOverlays) {
+              const href = overlay.getElementsByTagName('href')[0]?.textContent;
+              const latLonBox = overlay.getElementsByTagName('LatLonBox')[0];
+
+              if (href && latLonBox) {
+                const north = parseFloat(latLonBox.getElementsByTagName('north')[0].textContent);
+                const south = parseFloat(latLonBox.getElementsByTagName('south')[0].textContent);
+                const east = parseFloat(latLonBox.getElementsByTagName('east')[0].textContent);
+                const west = parseFloat(latLonBox.getElementsByTagName('west')[0].textContent);
+                const bounds = [[south, west], [north, east]];
+                allBounds.push(bounds);
+
+                let imageUrl = href;
+                if (zip) {
+                  const imgFile = zip.file(href) || zip.file(href.replace(/^[./]+/, ''));
+                  if (imgFile) {
+                    const imgBlob = await imgFile.async("blob");
+                    imageUrl = URL.createObjectURL(imgBlob);
+                  }
+                }
+
+                const imgOverlay = L.imageOverlay(imageUrl, bounds, {
+                  opacity: 1.0,
+                  zIndex: 1000,
+                  interactive: true
+                });
+                kmzGroup.addLayer(imgOverlay);
+              }
+            }
+
+            // Adiciona o grupo consolidado à lista global
+            uploadedRasters.addLayer(kmzGroup);
+            
+            // Ajustar o zoom para englobar todas as partes do KMZ
+            if (allBounds.length > 0) {
+                const featureGroup = L.featureGroup(kmzGroup.getLayers());
+                map.fitBounds(featureGroup.getBounds());
+                // Permite focar depois usando o getBounds do grupo
+                kmzGroup.getBounds = () => featureGroup.getBounds();
+            }
+            
+            updateList();
+          } catch (err) {
+            console.error(err);
+            alert("Erro ao processar imagem: " + err.message);
+          }
+          showLoader(false);
+          e.target.value = "";
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        alert("Formatos suportados: .TIF, .TIFF, .KMZ, .KML");
+        showLoader(false);
+      }
+    });
+
+    // Ativa controles Leaflet.pm (ficam no topo esquerdo)
+    map.pm.addControls({ 
+      position: "topleft", 
+      drawPolygon: true, 
+      editMode: true, 
+      removalMode: true, 
+      drawRectangle: true,
+      drawCircle: true,     
+      drawMarker: false,
+      drawPolyline: false
+    });
+    map.pm.setPathOptions(polyStyle);
+
+    map.on("pm:create", (e) => {
+      const layer = e.layer;
+      const typeStr = layer instanceof L.Circle ? "Círculo" : "Polígono";
+      const nome = prompt(`Nome do ${typeStr}:`, `${typeStr} ${drawnItems.getLayers().length + 1}`) || "Sem nome";
+      
+      layer.feature = { type: "Feature", properties: { name: nome } };
+      if (layer.setStyle) layer.setStyle(polyStyle);
+      
+      drawnItems.addLayer(layer);
+      layer.on("pm:edit pm:update", updateList);
+      updateList();
+    });
+
+    document.querySelectorAll(".basemap-thumb").forEach((el) => {
+      el.addEventListener("click", () => {
+        map.removeLayer(currentBase);
+        currentBase = el.dataset.map === "streets" ? mapa : satelite;
+        map.addLayer(currentBase);
+        drawnItems.bringToFront();
+        uploadedRasters.bringToFront();
+        uploadedRasters.eachLayer(l => { if (l.setZIndex) l.setZIndex(1000); });
+        document.querySelectorAll(".basemap-thumb").forEach(t => t.classList.remove("selected"));
+        el.classList.add("selected");
+      });
+    });
+
+    updateList();
+  </script>
+</body>
+</html>
