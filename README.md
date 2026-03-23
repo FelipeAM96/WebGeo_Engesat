@@ -1,6 +1,7 @@
-# WebGeo_Engesat
+# WebGeo Engesat
 
 • WebGIS da Engesat
+--> Acesse a aplicação pelo site: https://felipeam96.github.io/WebGeo_Engesat/
 
 ## 🛰️ Sobre o Projeto
 Plataforma web para criação e manipulação de áreas de interesse (AOI) destinadas ao recobrimento por imagens de satélite. O objetivo é reduzir a fricção entre a delimitação da área pelo cliente e o atendimento técnico.
@@ -12,3 +13,7 @@ Plataforma web para criação e manipulação de áreas de interesse (AOI) desti
 * **Importação Versátil:**
     * **Imagens:** Suporte para visualização de `.TIFF` e `.KMZ`.
     * **Vetores:** Importação de polígonos em `.KML`, `.KMZ` e arquivos Shapefile (`.SHP` zipado).
+
+
+### 🛠️ Desenvolvimento
+Aplicação e site desenvolvidos integralmente por **Felipe AM**, da **ENGESAT**.
